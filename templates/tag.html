@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#{{ tag }} · LikeBox 标签页</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f766e'/%3E%3Ctext x='32' y='44' font-size='26' font-weight='bold' text-anchor='middle' fill='white' font-family='Arial'%3ELB%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='14') }}">
+</head>
+<body class="tag-page" data-tag="{{ tag }}">
+
+<div class="tag-wrap">
+  <header class="tag-header">
+    <div>
+      <h1>#{{ tag }}</h1>
+      <p>按收藏夹与文件夹层级汇总 · 统计打开次数、近 7 天与近 24 小时频率</p>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <button class="icon-btn theme-btn" id="tagTheme" type="button" title="切换深色模式">☾</button>
+      <a class="home-link" href="/">返回 LikeBox</a>
+    </div>
+  </header>
+
+  <div class="tag-controls">
+    <div class="control-group" id="sortGroup">
+      <span>排序</span>
+      <button type="button" data-sort="recent">添加时间</button>
+      <button type="button" data-sort="uses">总次数</button>
+      <button type="button" data-sort="week">本周频率</button>
+      <button type="button" data-sort="day">24 小时</button>
+      <button type="button" data-sort="title">标题</button>
+    </div>
+    <div class="control-group" id="filterGroup">
+      <span>筛选</span>
+      <button type="button" data-filter="all">全部</button>
+      <button type="button" data-filter="week">本周用过</button>
+      <button type="button" data-filter="day">24 小时用过</button>
+      <button type="button" data-filter="none">从未打开</button>
+    </div>
+    <span class="tag-summary" id="tagSummary">载入中…</span>
+  </div>
+
+  <div class="tag-groups" id="tagGroups"></div>
+</div>
+
+<script src="{{ url_for('static', filename='tag.js', v='14') }}"></script>
+</body>
+</html>

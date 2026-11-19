@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LikeBox · 双栏收藏夹整理</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f766e'/%3E%3Ctext x='32' y='44' font-size='26' font-weight='bold' text-anchor='middle' fill='white' font-family='Arial'%3ELB%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='14') }}">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="logo">LB</div>
+    <div class="brand-text">
+      <h1>LikeBox</h1>
+      <p id="statText">正在载入…</p>
+    </div>
+  </div>
+
+  <div class="layout-switch" id="layoutSwitch" role="group" aria-label="分栏模式">
+    <button type="button" data-layout="1" title="单栏">单栏</button>
+    <button type="button" data-layout="2" title="双栏对照">双栏</button>
+  </div>
+
+  <div class="top-actions">
+    <select id="sort" title="排序方式">
+      <option value="recent">最近添加</option>
+      <option value="title">标题 A-Z</option>
+      <option value="folder">按文件夹</option>
+      <option value="oldest">最早添加</option>
+    </select>
+    <button class="btn ghost" id="btnImport" type="button" title="导入 Edge / Firefox / Chrome 导出的书签 HTML">导入</button>
+    <button class="btn ghost" id="btnExport" type="button" title="导出主收藏夹为浏览器可导入的 HTML">导出</button>
+    <button class="btn ghost" id="btnNetwork" type="button" title="局域网访问设置">局域网</button>
+    <button class="icon-btn theme-btn" id="themeToggle" type="button" title="切换深色模式" aria-label="切换深色模式">☾</button>
+    <button class="btn primary" id="btnAdd" type="button">+ 添加</button>
+    <input type="file" id="fileInput" accept=".html,.htm,text/html" hidden>
+  </div>
+</header>
+
+<main id="panes" class="panes" aria-label="收藏夹对照整理"></main>
+
+<p class="tips" id="tips">拖动书签到任意栏的文件夹即可归位 · 点击书签在新标签页打开 · 右键文件夹可新建 / 重命名 / 删除 · 点击 #标签 查看标签页</p>
+
+<div id="contextMenu" class="context-menu" hidden></div>
+
+<!-- 添加 / 编辑收藏 -->
+<div class="modal" id="editorModal" hidden>
+  <div class="modal-mask" data-close></div>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="editorTitle">
+    <div class="modal-head">
+      <h3 id="editorTitle">添加收藏</h3>
+      <button class="icon-btn" type="button" data-close title="关闭">×</button>
+    </div>
+    <form id="editorForm" autocomplete="off">
+      <label class="field">
+        <span>收藏夹</span>
+        <select id="inputLibrary"></select>
+      </label>
+      <label class="field">
+        <span>网址</span>
+        <div class="url-row">
+          <input id="inputUrl" type="text" placeholder="https://example.com" required>
+          <button class="btn ghost sm" id="btnFetchTitle" type="button">取标题</button>
+        </div>
+      </label>
+      <label class="field">
+        <span>标题</span>
+        <input id="inputTitle" type="text" placeholder="不填则使用网址">
+      </label>
+      <label class="field">
+        <span>文件夹</span>
+        <input id="inputFolder" type="text" list="folderOptions" placeholder="留空表示未分类，例如：收藏夹栏/工具">
+        <datalist id="folderOptions"></datalist>
+      </label>
+      <label class="field">
+        <span>标签</span>
+        <input id="inputTags" type="text" placeholder="#工作 #github，用空格分隔">
+      </label>
+      <p class="form-hint">文件夹用 <code>/</code> 分隔层级，不存在的文件夹会自动创建；标签点开后会在新标签页按文件夹展示。</p>
+      <div class="modal-actions">
+        <button class="btn ghost" type="button" data-close>取消</button>
+        <button class="btn primary" type="submit" id="btnSave">保存</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 删除收藏确认 -->
+<div class="modal" id="confirmModal" hidden>
+  <div class="modal-mask" data-close></div>
+  <div class="modal-card small" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <div class="modal-head">
+      <h3 id="confirmTitle">删除收藏</h3>
+      <button class="icon-btn" type="button" data-close title="关闭">×</button>
+    </div>
+    <p class="confirm-text">确定要删除 <strong id="confirmName"></strong> 吗？删除后无法恢复。</p>
+    <div class="modal-actions">
+      <button class="btn ghost" type="button" data-close>取消</button>
+      <button class="btn danger" type="button" id="btnConfirmDelete">删除</button>
+    </div>
+  </div>
+</div>
+
+<!-- 文件夹新建 / 重命名 -->
+<div class="modal" id="folderModal" hidden>
+  <div class="modal-mask" data-close></div>
+  <div class="modal-card small" role="dialog" aria-modal="true" aria-labelledby="folderTitle">
+    <div class="modal-head">
+      <h3 id="folderTitle">新建文件夹</h3>
+      <button class="icon-btn" type="button" data-close title="关闭">×</button>
+    </div>
+    <form id="folderForm" autocomplete="off">
+      <label class="field">
+        <span>名称</span>
+        <input id="folderName" type="text" required placeholder="文件夹名称">
+      </label>
+      <p class="form-hint" id="folderHint"></p>
+      <div class="modal-actions">
+        <button class="btn ghost" type="button" data-close>取消</button>
+        <button class="btn primary" type="submit" id="btnFolderSave">保存</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 文件夹删除确认 -->
+<div class="modal" id="folderDeleteModal" hidden>
+  <div class="modal-mask" data-close></div>
+  <div class="modal-card small" role="dialog" aria-modal="true" aria-labelledby="folderDeleteTitle">
+    <div class="modal-head">
+      <h3 id="folderDeleteTitle">删除文件夹</h3>
+      <button class="icon-btn" type="button" data-close title="关闭">×</button>
+    </div>
+    <p class="confirm-text">确定删除文件夹 <strong id="folderDeleteName"></strong> 吗？<br><span id="folderDeleteCount" class="danger-text"></span></p>
+    <div class="modal-actions">
+      <button class="btn ghost" type="button" data-close>取消</button>
+      <button class="btn danger" type="button" id="btnFolderDelete">删除</button>
+    </div>
+  </div>
+</div>
+
+<!-- 收藏夹标签 -->
+<div class="modal" id="tagModal" hidden>
+  <div class="modal-mask" data-close></div>
+  <div class="modal-card small" role="dialog" aria-modal="true" aria-labelledby="tagTitle">
+    <div class="modal-head">
+      <h3 id="tagTitle">收藏夹标签</h3>
+      <button class="icon-btn" type="button" data-close title="关闭">×</button>
+    </div>
+    <form id="tagForm" autocomplete="off">
+      <label class="field">
+        <span>标签</span>
+        <input id="tagInput" type="text" placeholder="#工作 #github">
+      </label>
+      <p class="form-hint">给整个收藏夹打标签后，里面的所有收藏都会出现在对应标签页。</p>
+      <div class="modal-actions">
+        <button class="btn ghost" type="button" data-close>取消</button>
+        <button class="btn primary" type="submit" id="btnTagSave">保存</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 局域网设置 -->
+<div class="modal" id="networkModal" hidden>
+  <div class="modal-mask" data-close></div>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="networkTitle">
+    <div class="modal-head">
+      <h3 id="networkTitle">局域网访问</h3>
+      <button class="icon-btn" type="button" data-close title="关闭">×</button>
+    </div>
+    <div class="network-body">
+      <label class="switch-row">
+        <input type="checkbox" id="lanEnabled">
+        <span>允许局域网内其他设备访问</span>
+      </label>
+      <p class="form-hint" id="networkAddresses">端口固定为 8180。</p>
+      <label class="field">
+        <span>访问密码（4-64 位）</span>
+        <div class="url-row">
+          <input id="lanPassword" type="password" placeholder="设置或重置密码">
+          <button class="btn ghost sm" id="btnRandomPassword" type="button">随机</button>
+        </div>
+      </label>
+      <p class="form-hint">密码只用于简单防护，不具备可靠的防护能力；请只在可信局域网内开启。</p>
+      <div class="modal-actions">
+        <button class="btn ghost" type="button" data-close>取消</button>
+        <button class="btn primary" type="button" id="btnNetworkSave">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 排除域名 -->
+<div class="modal" id="exclusionsModal" hidden>
+  <div class="modal-mask" data-close></div>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="exclusionsTitle">
+    <div class="modal-head">
+      <h3 id="exclusionsTitle">排除检测的域名</h3>
+      <button class="icon-btn" type="button" data-close title="关闭">×</button>
+    </div>
+    <p class="form-hint">这些域名下的链接不会被标记为「网址失效」，适合偶尔抽风的站点。</p>
+    <div class="exclusion-list" id="exclusionsList"></div>
+    <div class="url-row">
+      <input id="exclusionInput" type="text" placeholder="添加域名，例如 github.com">
+      <button class="btn ghost sm" id="btnAddExclusion" type="button">添加</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn primary" type="button" data-close>完成</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+
+<script src="{{ url_for('static', filename='app.js', v='14') }}"></script>
+</body>
+</html>

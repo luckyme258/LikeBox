@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LikeBox · 局域网访问</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f766e'/%3E%3Ctext x='32' y='44' font-size='26' font-weight='bold' text-anchor='middle' fill='white' font-family='Arial'%3ELB%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='14') }}">
+</head>
+<body class="login-page">
+
+<div class="login-box">
+  <div class="login-card">
+    <h1>LikeBox</h1>
+    <p>这台电脑开启了局域网访问。输入访问密码后继续。</p>
+
+    {% if error %}
+      <p class="login-error">{{ error }}</p>
+    {% endif %}
+
+    {% if enabled and has_password %}
+    <form method="post" action="{{ url_for('login_submit') }}">
+      <input type="hidden" name="next" value="{{ request.args.get('next', '/') }}">
+      <input type="password" name="password" placeholder="访问密码" autocomplete="current-password" autofocus required>
+      <button class="btn primary" type="submit" style="height:34px;">进入</button>
+    </form>
+    {% else %}
+      <p class="login-warning">局域网访问尚未开启或没有设置密码，请在电脑端打开 LikeBox 的「局域网」设置。</p>
+    {% endif %}
+
+    <p class="login-warning" style="margin-top:12px;">此密码仅用于简单防护，不具备可靠的防护能力。请只在可信局域网内使用。</p>
+  </div>
+</div>
+
+<script>
+  (() => {
+    const saved = localStorage.getItem('likebox-theme');
+    const preferred = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.dataset.theme = saved || preferred;
+  })();
+</script>
+</body>
+</html>

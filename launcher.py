@@ -1,0 +1,91 @@
+#!/usr/bin/env python3
+"""LikeBox 桌面启动器：后台运行 Flask 服务并自动打开浏览器。"""
+
+from __future__ import annotations
+
+import logging
+import os
+import socket
+import sys
+import threading
+import webbrowser
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
+
+
+def runtime_dir() -> Path:
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parent
+
+
+def port_is_open(port: int) -> bool:
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=0.4):
+            return True
+    except OSError:
+        return False
+
+
+def show_error(message: str) -> None:
+    if getattr(sys, "frozen", False):
+        try:
+            import ctypes
+
+            ctypes.windll.user32.MessageBoxW(0, message, "LikeBox", 0x10)
+        except Exception:
+            pass
+
+
+def main() -> int:
+    base = runtime_dir()
+    data_dir = base / "data"
+    data_dir.mkdir(parents=True, exist_ok=True)
+
+    handler = RotatingFileHandler(
+        data_dir / "likebox.log",
+        maxBytes=1_000_000,
+        backupCount=2,
+        encoding="utf-8",
+    )
+    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+    root = logging.getLogger()
+    root.setLevel(logging.INFO)
+    root.addHandler(handler)
+
+    try:
+        import app
+
+        if port_is_open(app.PORT):
+            logging.info("LikeBox 已在运行，直接打开页面")
+            if os.environ.get("LIKEBOX_NO_BROWSER") != "1":
+                webbrowser.open(f"http://127.0.0.1:{app.PORT}/")
+            return 0
+
+        from waitress import serve
+
+        if os.environ.get("LIKEBOX_NO_BROWSER") != "1":
+            threading.Timer(
+                1.2, lambda: webbrowser.open(f"http://127.0.0.1:{app.PORT}/")
+            ).start()
+        logging.info("LikeBox 启动：http://127.0.0.1:%s/", app.PORT)
+        serve(
+            app.app,
+            host="0.0.0.0",
+            port=app.PORT,
+            threads=8,
+            ident="LikeBox",
+        )
+        return 0
+    except Exception:
+        logging.exception("LikeBox 启动失败")
+        show_error(
+            "LikeBox 启动失败。\n\n"
+            f"日志位置：{data_dir / 'likebox.log'}\n"
+            "请确认 8180 端口没有被其他程序占用。"
+        )
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

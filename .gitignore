@@ -1,0 +1,29 @@
+# 本地用户数据与浏览器导出文件，不进入仓库
+data/
+favorites_2026_11_18.html
+favorites_*.html
+*.db
+*.db-shm
+*.db-wal
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+
+# 构建产物
+build/
+dist/
+*.spec
+
+# 日志与截图
+*.log
+ui-*.png
+
+# 编辑器 / 系统
+.idea/
+.vscode/
+Thumbs.db
+desktop.ini
