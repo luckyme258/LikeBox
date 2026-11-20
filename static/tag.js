@@ -8,8 +8,22 @@
   const filterGroup = document.getElementById("filterGroup");
   const themeBtn = document.getElementById("tagTheme");
 
+  const tagEditModal = document.getElementById("tagEditModal");
+  const tagEditForm = document.getElementById("tagEditForm");
+  const tagEditName = document.getElementById("tagEditName");
+  const tagEditInput = document.getElementById("tagEditInput");
+  const btnTagEditSave = document.getElementById("btnTagEditSave");
+
+  const tagNoteModal = document.getElementById("tagNoteModal");
+  const tagNoteForm = document.getElementById("tagNoteForm");
+  const tagNoteName = document.getElementById("tagNoteName");
+  const tagNoteInput = document.getElementById("tagNoteInput");
+  const btnTagNoteSave = document.getElementById("btnTagNoteSave");
+
   let sort = "recent";
   let filter = "all";
+  let currentItems = new Map();
+  let activeItem = null;
 
   const escapeHtml = (value) =>
     String(value ?? "")
@@ -66,6 +80,17 @@
     fetch(url, { method: "POST", keepalive: true }).catch(() => {});
   };
 
+  const openModal = (modal) => {
+    modal.hidden = false;
+    body.style.overflow = "hidden";
+  };
+
+  const closeModal = (modal) => {
+    if (modal.hidden) return;
+    modal.hidden = true;
+    if (tagEditModal.hidden && tagNoteModal.hidden) body.style.overflow = "";
+  };
+
   const itemHtml = (item) => {
     const favicon = item.icon
       ? `<img src="${escapeHtml(item.icon)}" alt="" loading="lazy" onerror="this.remove()">`
@@ -76,16 +101,27 @@
       `<span>24h ${item.day_count || 0}</span>`,
     ].join("");
     const last = item.last_open ? ` · 最近 ${relativeTime(item.last_open)}` : "";
+    const note = item.note
+      ? `<span class="item-note" title="${escapeHtml(item.note)}">${escapeHtml(item.note)}</span>`
+      : "";
     return `
-      <a class="tag-item" href="${escapeHtml(safeUrl(item.url))}" target="_blank" rel="noopener noreferrer"
-         data-id="${item.id}" title="${escapeHtml(item.url)}">
-        <span class="favicon">${favicon}</span>
-        <span class="item-text">
-          <span class="item-title">${escapeHtml(item.title)}</span>
-          <span class="item-meta">${escapeHtml(item.host || "")}${last}</span>
-        </span>
-        <span class="tag-stats">${stats}</span>
-      </a>`;
+      <article class="tag-item" data-id="${item.id}">
+        <a class="tag-item-hit" href="${escapeHtml(safeUrl(item.url))}" target="_blank" rel="noopener noreferrer"
+           data-id="${item.id}" title="${escapeHtml(item.url)}">
+          <span class="favicon">${favicon}</span>
+          <span class="item-text">
+            <span class="item-title">${escapeHtml(item.title)}</span>
+            <span class="item-meta">${escapeHtml(item.host || "")}${last}</span>
+            ${note}
+          </span>
+          <span class="tag-stats">${stats}</span>
+        </a>
+        <div class="tag-item-actions">
+          <button class="icon-btn tag" type="button" data-act="tag" title="编辑标签">#</button>
+          <button class="icon-btn note" type="button" data-act="note" title="编辑备注">🗒</button>
+          <button class="icon-btn del" type="button" data-act="delete" title="删除">🗑</button>
+        </div>
+      </article>`;
   };
 
   const subtreeCount = (node) =>
@@ -118,6 +154,77 @@
       </section>`;
   };
 
+  const collectItems = (node, map) => {
+    (node.items || []).forEach((item) => map.set(item.id, item));
+    (node.children || []).forEach((child) => collectItems(child, map));
+  };
+
+  const openTagEdit = (item) => {
+    activeItem = item;
+    tagEditName.textContent = item.title;
+    tagEditInput.value = (item.tags || []).map((value) => `#${value}`).join(" ");
+    openModal(tagEditModal);
+    setTimeout(() => {
+      tagEditInput.focus();
+      tagEditInput.select();
+    }, 50);
+  };
+
+  const openNote = (item) => {
+    activeItem = item;
+    tagNoteName.textContent = item.title;
+    tagNoteInput.value = item.note || "";
+    openModal(tagNoteModal);
+    setTimeout(() => tagNoteInput.focus(), 50);
+  };
+
+  const saveBookmark = async (payload) => {
+    const res = await fetch(`/api/bookmarks/${activeItem.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "保存失败");
+    return data;
+  };
+
+  tagEditForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!activeItem) return;
+    btnTagEditSave.disabled = true;
+    try {
+      await saveBookmark({
+        library_id: activeItem.library_id,
+        url: activeItem.url,
+        title: activeItem.title,
+        folder: activeItem.folder,
+        tags: tagEditInput.value,
+      });
+      closeModal(tagEditModal);
+      await load();
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      btnTagEditSave.disabled = false;
+    }
+  });
+
+  tagNoteForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!activeItem) return;
+    btnTagNoteSave.disabled = true;
+    try {
+      await saveBookmark({ note: tagNoteInput.value });
+      closeModal(tagNoteModal);
+      await load();
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      btnTagNoteSave.disabled = false;
+    }
+  });
+
   const setActive = (container, key, value) => {
     [...container.querySelectorAll("button")].forEach((btn) => {
       btn.classList.toggle("active", btn.dataset[key] === value);
@@ -131,6 +238,8 @@
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "加载失败");
       summaryEl.textContent = `${data.total} 条收藏`;
+      currentItems = new Map();
+      (data.groups || []).forEach((group) => (group.tree || []).forEach((node) => collectItems(node, currentItems)));
       if (!data.groups || !data.groups.length) {
         groupsEl.innerHTML = `<div class="tag-empty">这个筛选条件下没有收藏。<br>可以换个统计维度，或回到 LikeBox 给收藏夹 / 收藏打上 #${escapeHtml(tag)} 标签。</div>`;
       } else {
@@ -158,9 +267,42 @@
     load();
   });
 
-  groupsEl.addEventListener("click", (event) => {
-    const link = event.target.closest(".tag-item");
+  groupsEl.addEventListener("click", async (event) => {
+    const action = event.target.closest("[data-act]");
+    if (action) {
+      const row = action.closest(".tag-item");
+      const item = row ? currentItems.get(Number(row.dataset.id)) : null;
+      if (!item) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (action.dataset.act === "tag") openTagEdit(item);
+      else if (action.dataset.act === "note") openNote(item);
+      else if (action.dataset.act === "delete") {
+        if (!window.confirm("删除这条收藏？")) return;
+        try {
+          const res = await fetch(`/api/bookmarks/${item.id}`, { method: "DELETE" });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "删除失败");
+          await load();
+        } catch (err) {
+          alert(err.message);
+        }
+      }
+      return;
+    }
+
+    const link = event.target.closest(".tag-item-hit");
     if (link) recordOpen(link.dataset.id);
+  });
+
+  document.querySelectorAll("[data-close]").forEach((el) => {
+    el.addEventListener("click", () => closeModal(el.closest(".modal")));
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    closeModal(tagEditModal);
+    closeModal(tagNoteModal);
   });
 
   const init = () => {

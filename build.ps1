@@ -1,12 +1,24 @@
+param(
+    [string]$Python = ""
+)
+
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 
-$python = "C:\Users\Administrator\AppData\Local\Programs\Python\Python315\python.exe"
-if (-not (Test-Path $python)) {
-    $python = "python"
+if (-not $Python) {
+    $Python = $env:LIKEBOX_PYTHON
+}
+if (-not $Python) {
+    $command = Get-Command python -ErrorAction SilentlyContinue
+    if ($command) {
+        $Python = $command.Source
+    }
+}
+if (-not $Python) {
+    throw "找不到 Python。请把 python 加入 PATH，或传入 -Python <python.exe>。"
 }
 
-& $python -m PyInstaller `
+& $Python -m PyInstaller `
     --noconfirm `
     --clean `
     --onefile `
@@ -14,6 +26,7 @@ if (-not (Test-Path $python)) {
     --name "LikeBox" `
     --add-data "templates;templates" `
     --add-data "static;static" `
+    --add-data "config;config" `
     "launcher.py"
 
 if ($LASTEXITCODE -ne 0) {

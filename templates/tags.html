@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>所有标签 · LikeBox</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f766e'/%3E%3Ctext x='32' y='44' font-size='26' font-weight='bold' text-anchor='middle' fill='white' font-family='Arial'%3ELB%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='44') }}">
+</head>
+<body class="tag-page tag-index-page">
+
+<div class="tag-wrap">
+  <header class="tag-header">
+    <div>
+      <h1>所有标签</h1>
+      <p>按使用次数排序 · 点击标签查看对应收藏</p>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <button class="icon-btn theme-btn" id="tagIndexTheme" type="button" title="切换深色模式">☾</button>
+      <a class="home-link" href="/">返回 LikeBox</a>
+    </div>
+  </header>
+
+  {% if tags %}
+  <div class="tag-index-list">
+    {% for item in tags %}
+    <a class="tag-index-item" href="{{ url_for('tag_page', tag=item.tag) }}">
+      <span class="tag-index-name">#{{ item.tag }}</span>
+      <span class="tag-index-count">{{ item.count }}</span>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="tag-empty">还没有标签。回到 LikeBox 给收藏或收藏夹加标签后，这里会汇总显示。</div>
+  {% endif %}
+</div>
+
+<script>
+(() => {
+  const key = "likebox-theme";
+  const btn = document.getElementById("tagIndexTheme");
+  const apply = (theme) => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem(key, theme);
+    btn.textContent = theme === "dark" ? "☀" : "☾";
+  };
+  const saved = localStorage.getItem(key);
+  const preferred = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  apply(saved || preferred);
+  btn.addEventListener("click", () => apply(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+})();
+</script>
+</body>
+</html>

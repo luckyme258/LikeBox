@@ -1,0 +1,49 @@
+{
+  "_comment": "LikeBox 批量文本导入规则。只有 #标签 是标签；其余文字作为相邻链接的备注。改完保存后点导入窗口的「刷新」即可生效。",
+  "version": 1,
+  "default_profile": "general",
+  "profiles": {
+    "general": {
+      "name": "#标签全批共用",
+      "description": "只有 #标签 是标签，并默认应用到整批所有链接；其余文字全部作为相邻链接的备注。",
+      "url_pattern": "\\b(?:(?:[a-z][a-z0-9+.-]*://|mailto:|about:)[^\\s<>\"]+|www\\.[^\\s<>\"]+)",
+      "tag_prefixes": ["#"],
+      "note_prefixes": ["备注：", "备注:", "note:", "说明：", "描述：", "备忘："],
+      "folder_prefixes": ["文件夹：", "文件夹:", "folder:", "分类：", "目录："],
+      "title_prefixes": ["标题：", "标题:", "title:"],
+      "tag_separator_pattern": "[#,，、；;\\s]+",
+      "max_tag_chars": 18,
+      "max_tag_words": 3,
+      "sentence_chars": "。！？!?；;，、：:",
+      "short_line_mode": "note",
+      "tag_scope": "batch",
+      "text_association": "auto",
+      "title_from_url": true,
+      "note_join": "\n",
+      "max_note_chars": 2000,
+      "max_items": 5000,
+      "ignore_prefixes": ["//", ">"]
+    },
+    "item_tags": {
+      "name": "#标签仅当前链接",
+      "description": "只有 #标签 是标签，但只加到它所属的那一条链接；其余文字作为备注。",
+      "url_pattern": "\\b(?:(?:[a-z][a-z0-9+.-]*://|mailto:|about:)[^\\s<>\"]+|www\\.[^\\s<>\"]+)",
+      "tag_prefixes": ["#"],
+      "note_prefixes": ["备注：", "备注:", "note:", "说明：", "描述：", "备忘："],
+      "folder_prefixes": ["文件夹：", "文件夹:", "folder:", "分类：", "目录："],
+      "title_prefixes": ["标题：", "标题:", "title:"],
+      "tag_separator_pattern": "[#,，、；;\\s]+",
+      "max_tag_chars": 18,
+      "max_tag_words": 3,
+      "sentence_chars": "。！？!?；;，、：:",
+      "short_line_mode": "note",
+      "tag_scope": "item",
+      "text_association": "auto",
+      "title_from_url": true,
+      "note_join": "\n",
+      "max_note_chars": 2000,
+      "max_items": 5000,
+      "ignore_prefixes": ["//", ">"]
+    }
+  }
+}

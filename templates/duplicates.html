@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>重复链接检查 · LikeBox</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f766e'/%3E%3Ctext x='32' y='44' font-size='26' font-weight='bold' text-anchor='middle' fill='white' font-family='Arial'%3ELB%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='44') }}">
+</head>
+<body class="tag-page dup-page" data-library="{{ library_id }}">
+
+<div class="tag-wrap">
+  <header class="tag-header">
+    <div>
+      <h1>重复链接检查</h1>
+      <p>{{ library_name }} · 同一收藏夹内 URL 相同的链接会自动分组，每组至少保留一条。</p>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <button class="icon-btn theme-btn" id="dupTheme" type="button" title="切换深色模式">☾</button>
+      <a class="home-link" href="/">返回 LikeBox</a>
+    </div>
+  </header>
+
+  <div class="dup-page-bar">
+    <div class="dup-summary" id="dupSummary">正在检查…</div>
+    <div class="dup-page-actions">
+      <button class="btn ghost sm" id="dupRefresh" type="button">重新检查</button>
+      <button class="btn ghost sm" id="dupKeepOldest" type="button">每组保留最早一条</button>
+      <button class="btn ghost sm" id="dupClear" type="button">清空选择</button>
+      <button class="btn danger sm" id="dupDelete" type="button" disabled>删除已选</button>
+    </div>
+  </div>
+
+  <div class="dup-notice" id="dupNotice" hidden></div>
+  <div class="dup-list" id="dupList">
+    <div class="dup-empty">正在扫描当前收藏夹…</div>
+  </div>
+</div>
+
+<div class="modal" id="dupConfirmModal" hidden>
+  <div class="modal-mask" data-close></div>
+  <div class="modal-card small" role="dialog" aria-modal="true" aria-labelledby="dupConfirmTitle">
+    <div class="modal-head">
+      <h3 id="dupConfirmTitle">删除重复链接</h3>
+      <button class="icon-btn" type="button" data-close title="关闭">×</button>
+    </div>
+    <p class="confirm-text">确定删除 <strong id="dupConfirmCount"></strong> 吗？删除后无法恢复。</p>
+    <div class="modal-actions">
+      <button class="btn ghost" type="button" data-close>取消</button>
+      <button class="btn danger" type="button" id="dupConfirmDelete">删除</button>
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='duplicates.js', v='44') }}"></script>
+</body>
+</html>

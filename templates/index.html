@@ -5,13 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>LikeBox · 双栏收藏夹整理</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f766e'/%3E%3Ctext x='32' y='44' font-size='26' font-weight='bold' text-anchor='middle' fill='white' font-family='Arial'%3ELB%3C/text%3E%3C/svg%3E">
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='14') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='44') }}">
 </head>
 <body>
 
 <header class="topbar">
   <div class="brand">
-    <div class="logo">LB</div>
+    <button class="command-toggle" id="commandToggle" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="commandPanel" title="切换收藏夹与搜索（Ctrl+K）">
+      <span class="logo">LB</span>
+      <span class="command-caret" aria-hidden="true">⌄</span>
+    </button>
     <div class="brand-text">
       <h1>LikeBox</h1>
       <p id="statText">正在载入…</p>
@@ -30,18 +33,43 @@
       <option value="folder">按文件夹</option>
       <option value="oldest">最早添加</option>
     </select>
-    <button class="btn ghost" id="btnImport" type="button" title="导入 Edge / Firefox / Chrome 导出的书签 HTML">导入</button>
-    <button class="btn ghost" id="btnExport" type="button" title="导出主收藏夹为浏览器可导入的 HTML">导出</button>
     <button class="btn ghost" id="btnNetwork" type="button" title="局域网访问设置">局域网</button>
+    <a class="btn ghost tags-btn" id="btnTags" href="/tags" title="所有标签"><span class="tag-hash">#</span><span class="tag-label">标签</span></a>
     <button class="icon-btn theme-btn" id="themeToggle" type="button" title="切换深色模式" aria-label="切换深色模式">☾</button>
     <button class="btn primary" id="btnAdd" type="button">+ 添加</button>
-    <input type="file" id="fileInput" accept=".html,.htm,text/html" hidden>
+    <input type="file" id="fileInput" accept=".html,.htm,.txt,.md,.csv,.json,text/html,text/plain" hidden>
   </div>
 </header>
 
-<main id="panes" class="panes" aria-label="收藏夹对照整理"></main>
+<div class="command-panel" id="commandPanel" hidden role="dialog" aria-label="收藏夹与搜索">
+  <div class="command-panel-head">
+    <span>收藏夹与搜索</span>
+    <span class="command-kbd">Ctrl K</span>
+  </div>
+  <div class="command-search">
+    <span class="command-search-icon" aria-hidden="true">⌕</span>
+    <input id="commandSearch" type="search" placeholder="搜索所有栏的标题 / 网址 / 文件夹" autocomplete="off" aria-label="搜索所有栏">
+    <button class="icon-btn" id="commandSearchClear" type="button" title="清除搜索" aria-label="清除搜索">×</button>
+  </div>
+  <div class="command-target" id="commandTarget" hidden>
+    <span>目标栏</span>
+    <div class="command-target-btns" role="group" aria-label="选择要切换的栏">
+      <button type="button" data-pane="0">左栏</button>
+      <button type="button" data-pane="1">右栏</button>
+    </div>
+  </div>
+  <div class="command-lib-list" id="commandLibList"></div>
+  <div class="command-actions">
+    <button class="btn ghost sm" id="btnImport" type="button" title="导入 Edge / Firefox / Chrome 导出的书签 HTML，或选择文本文件">导入书签</button>
+    <button class="btn ghost sm" id="btnBatchImport" type="button" title="粘贴网址、标签和备注，批量导入到当前收藏夹">批量导入</button>
+    <button class="btn ghost sm" id="btnBatchExport" type="button" title="按导入规则导出为文本，可选择文件夹并预览">批量导出</button>
+    <button class="btn ghost sm" id="btnExport" type="button" title="导出主收藏夹为浏览器可导入的 HTML">导出书签</button>
+  </div>
+  <p class="command-note">点击收藏夹载入目标栏；搜索同时作用于当前显示的所有栏。</p>
+  <p class="command-tips">拖动书签到任意栏的文件夹即可归位 · 点击书签在新标签页打开 · 右键文件夹可新建 / 重命名 / 删除 · 点击标签查看标签页</p>
+</div>
 
-<p class="tips" id="tips">拖动书签到任意栏的文件夹即可归位 · 点击书签在新标签页打开 · 右键文件夹可新建 / 重命名 / 删除 · 点击 #标签 查看标签页</p>
+<main id="panes" class="panes" aria-label="收藏夹对照整理"></main>
 
 <div id="contextMenu" class="context-menu" hidden></div>
 
@@ -100,6 +128,108 @@
       <button class="btn ghost" type="button" data-close>取消</button>
       <button class="btn danger" type="button" id="btnConfirmDelete">删除</button>
     </div>
+  </div>
+</div>
+
+<!-- 快速添加标签 -->
+<div class="modal" id="quickTagModal" hidden>
+  <div class="modal-mask" data-close></div>
+  <div class="modal-card small" role="dialog" aria-modal="true" aria-labelledby="quickTagTitle">
+    <div class="modal-head">
+      <h3 id="quickTagTitle">快速添加标签</h3>
+      <button class="icon-btn" type="button" data-close title="关闭">×</button>
+    </div>
+    <form id="quickTagForm" autocomplete="off">
+      <p class="confirm-text" id="quickTagName"></p>
+      <label class="field">
+        <span>标签</span>
+        <input id="quickTagInput" type="text" placeholder="#工作 #github，用空格分隔">
+      </label>
+      <p class="form-hint">只改这条收藏的标签，不改标题、网址或文件夹。</p>
+      <div class="modal-actions">
+        <button class="btn ghost" type="button" data-close>取消</button>
+        <button class="btn primary" type="submit" id="btnQuickTagSave">保存标签</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 单条备注 -->
+<div class="modal" id="noteModal" hidden>
+  <div class="modal-mask" data-close></div>
+  <div class="modal-card small" role="dialog" aria-modal="true" aria-labelledby="noteTitle">
+    <div class="modal-head">
+      <h3 id="noteTitle">添加备注</h3>
+      <button class="icon-btn" type="button" data-close title="关闭">×</button>
+    </div>
+    <form id="noteForm" autocomplete="off">
+      <p class="confirm-text" id="noteName"></p>
+      <label class="field">
+        <span>备注</span>
+        <textarea id="noteInput" rows="6" maxlength="2000" placeholder="记下这条链接的用途、重点或回忆线索"></textarea>
+      </label>
+      <p class="form-hint">备注会显示在链接标题下方，最多 2000 字。</p>
+      <div class="modal-actions">
+        <button class="btn ghost" type="button" data-close>取消</button>
+        <button class="btn primary" type="submit" id="btnNoteSave">保存备注</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 批量追加标签 -->
+<div class="modal" id="batchTagModal" hidden>
+  <div class="modal-mask" data-close></div>
+  <div class="modal-card small" role="dialog" aria-modal="true" aria-labelledby="batchTagTitle">
+    <div class="modal-head">
+      <h3 id="batchTagTitle">批量追加标签</h3>
+      <button class="icon-btn" type="button" data-close title="关闭">×</button>
+    </div>
+    <form id="batchTagForm" autocomplete="off">
+      <p class="confirm-text" id="batchTagCount"></p>
+      <label class="field">
+        <span>新增标签</span>
+        <input id="batchTagInput" type="text" placeholder="#工作 #github，用空格分隔">
+      </label>
+      <p class="form-hint">标签会追加到原有标签，不会覆盖；每条收藏合并后最多保留 10 个标签，超出的新标签会被忽略。</p>
+      <div class="modal-actions">
+        <button class="btn ghost" type="button" data-close>取消</button>
+        <button class="btn primary" type="submit" id="btnBatchTagSave">追加标签</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 批量替换域名 -->
+<div class="modal" id="replaceDomainModal" hidden>
+  <div class="modal-mask" data-close></div>
+  <div class="modal-card small" role="dialog" aria-modal="true" aria-labelledby="replaceDomainTitle">
+    <div class="modal-head">
+      <h3 id="replaceDomainTitle">批量替换域名</h3>
+      <button class="icon-btn" type="button" data-close title="关闭">×</button>
+    </div>
+    <form id="replaceDomainForm" autocomplete="off">
+      <label class="field">
+        <span>旧域名</span>
+        <input id="replaceDomainOld" type="text" required placeholder="old.example.com">
+      </label>
+      <label class="field">
+        <span>新域名</span>
+        <input id="replaceDomainNew" type="text" required placeholder="new.example.com">
+      </label>
+      <label class="field">
+        <span>替换范围</span>
+        <select id="replaceDomainScope">
+          <option value="library">当前收藏夹</option>
+          <option value="all">所有收藏夹</option>
+        </select>
+      </label>
+      <p class="form-hint">只替换域名，路径、查询参数、文件夹和标签保持不变；替换后会清除这些链接的检测状态。</p>
+      <div class="modal-actions">
+        <button class="btn ghost" type="button" data-close>取消</button>
+        <button class="btn primary" type="submit" id="btnReplaceDomain">批量替换</button>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -213,8 +343,106 @@
   </div>
 </div>
 
+<!-- 备份核查 -->
+<div class="modal" id="backupModal" hidden>
+  <div class="modal-mask" data-close></div>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="backupTitle">
+    <div class="modal-head">
+      <h3 id="backupTitle">备份核查</h3>
+      <button class="icon-btn" type="button" data-close title="关闭">×</button>
+    </div>
+    <p class="form-hint" id="backupSummary">正在核查备份…</p>
+    <div class="backup-list" id="backupList"></div>
+    <p class="form-hint">新建备份会先在临时文件中完成完整性校验，确认可打开且数据条数一致后才替换为正式备份；最多保留 3 份。</p>
+    <div class="modal-actions">
+      <button class="btn ghost" type="button" data-close>关闭</button>
+      <button class="btn primary" type="button" id="btnBackupNow">立即备份并核查</button>
+    </div>
+  </div>
+</div>
+
+<!-- 批量文本导入 -->
+<div class="modal" id="batchImportModal" hidden>
+  <div class="modal-mask" data-close></div>
+  <div class="modal-card batch-import-card" role="dialog" aria-modal="true" aria-labelledby="batchImportTitle">
+    <div class="modal-head">
+      <h3 id="batchImportTitle">批量导入网址</h3>
+      <button class="icon-btn" type="button" data-close title="关闭">×</button>
+    </div>
+    <div class="field">
+      <span>收藏夹</span>
+      <select id="batchLibrary"></select>
+    </div>
+    <div class="batch-import-grid">
+      <label class="field">
+        <span>默认文件夹（可留空）</span>
+        <input id="batchFolder" type="text" list="batchFolderOptions" placeholder="留空表示未分类">
+        <datalist id="batchFolderOptions"></datalist>
+      </label>
+      <div class="field">
+        <span>解析规则</span>
+        <div class="url-row">
+          <select id="batchProfile"></select>
+          <button class="btn ghost sm" id="btnBatchReloadRules" type="button" title="重新读取规则文件">刷新</button>
+        </div>
+      </div>
+    </div>
+    <label class="field">
+      <span>粘贴内容</span>
+      <textarea id="batchText" rows="11" spellcheck="false" placeholder="只有 #标签 是标签，默认应用到整批链接；其余文字都是相邻链接的备注。&#10;&#10;例如：&#10;https://example.com/a 女友 #收藏 https://example.com/b 裙子&#10;&#10;也支持先写备注、再写网址：&#10;牙套&#10;https://example.com/c"></textarea>
+    </label>
+    <p class="form-hint" id="batchRulesHint">规则来自 config/import_rules.json，可随时修改；修改后点「刷新」或重新打开本窗口。</p>
+    <div class="batch-preview-toolbar">
+      <span id="batchPreviewSummary">尚未解析</span>
+      <button class="btn ghost sm" id="btnBatchParse" type="button">解析预览</button>
+    </div>
+    <div class="batch-preview" id="batchPreview"></div>
+    <p class="form-hint">重复链接会自动跳过；标签与备注会写入对应收藏。规则只决定如何识别，不会改动原始文本。</p>
+    <div class="modal-actions">
+      <button class="btn ghost" type="button" data-close>取消</button>
+      <button class="btn primary" type="button" id="btnBatchDoImport" disabled>导入</button>
+    </div>
+  </div>
+</div>
+
+<!-- 批量文本导出 -->
+<div class="modal" id="batchExportModal" hidden>
+  <div class="modal-mask" data-close></div>
+  <div class="modal-card batch-export-card" role="dialog" aria-modal="true" aria-labelledby="batchExportTitle">
+    <div class="modal-head">
+      <h3 id="batchExportTitle">批量导出文本</h3>
+      <button class="icon-btn" type="button" data-close title="关闭">×</button>
+    </div>
+    <div class="batch-export-grid">
+      <div class="field">
+        <span>收藏夹</span>
+        <select id="batchExportLibrary"></select>
+      </div>
+      <div class="field">
+        <span>文件夹</span>
+        <select id="batchExportFolder"></select>
+      </div>
+    </div>
+    <label class="switch-row">
+      <input type="checkbox" id="batchExportSubfolders" checked>
+      <span>包含所选文件夹下的子文件夹</span>
+    </label>
+    <div class="batch-preview-toolbar">
+      <span id="batchExportSummary">正在生成预览…</span>
+      <button class="btn ghost sm" id="btnBatchExportRefresh" type="button">刷新预览</button>
+    </div>
+    <textarea id="batchExportPreview" class="batch-export-preview" rows="12" readonly spellcheck="false" placeholder="导出文本预览"></textarea>
+    <p class="form-hint">导出内容按批量导入规则组织：标题、网址、#标签、备注和文件夹；首行「标签作用：单条」会让再次导入时标签只归属当前链接，不会变成整批共用。</p>
+    <div class="modal-actions">
+      <button class="btn ghost" type="button" data-close>关闭</button>
+      <button class="btn ghost" id="btnBatchExportCopy" type="button">复制文本</button>
+      <button class="btn primary" id="btnBatchExportDownload" type="button">下载 .txt</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast" class="toast" hidden></div>
 
-<script src="{{ url_for('static', filename='app.js', v='14') }}"></script>
+<script src="{{ url_for('static', filename='app.js', v='44') }}"></script>
 </body>
 </html>

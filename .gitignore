@@ -1,10 +1,20 @@
 # 本地用户数据与浏览器导出文件，不进入仓库
 data/
-favorites_2026_11_18.html
-favorites_*.html
 *.db
 *.db-shm
 *.db-wal
+*.sqlite
+*.sqlite3
+favorites_*.html
+favorites_*.htm
+
+# 运行状态、备份、日志与截图
+*.log
+*.out
+*.pid
+*.bak
+*.bak-*
+ui-*.png
 
 # Python
 __pycache__/
@@ -12,18 +22,19 @@ __pycache__/
 .venv/
 venv/
 .env
+.env.*
 
 # 构建产物
 build/
 dist/
 *.spec
-
-# 日志与截图
-*.log
-ui-*.png
+!LikeBox.spec
+*.exe
+*.zip
 
 # 编辑器 / 系统
 .idea/
 .vscode/
 Thumbs.db
 desktop.ini
+.DS_Store
