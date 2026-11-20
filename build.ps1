@@ -27,6 +27,9 @@ if (-not $Python) {
     --add-data "templates;templates" `
     --add-data "static;static" `
     --add-data "config;config" `
+    --add-data "assets;assets" `
+    --icon "assets\likebox.ico" `
+    --version-file "version_info.txt" `
     "launcher.py"
 
 if ($LASTEXITCODE -ne 0) {

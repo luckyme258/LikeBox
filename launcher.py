@@ -8,6 +8,7 @@ import os
 import socket
 import sys
 import threading
+import time
 import webbrowser
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
@@ -64,19 +65,79 @@ def main() -> int:
 
         from waitress import serve
 
+        server_errors: list[BaseException] = []
+
+        def run_server() -> None:
+            try:
+                serve(
+                    app.app,
+                    host="0.0.0.0",
+                    port=app.PORT,
+                    threads=8,
+                    ident="LikeBox",
+                )
+            except BaseException as exc:
+                server_errors.append(exc)
+                logging.exception("LikeBox 服务启动失败")
+
+        server_thread = threading.Thread(
+            target=run_server,
+            name="LikeBoxServer",
+            daemon=True,
+        )
+        server_thread.start()
+
+        deadline = time.monotonic() + 2.0
+        while time.monotonic() < deadline:
+            if server_errors:
+                break
+            if port_is_open(app.PORT):
+                break
+            time.sleep(0.1)
+
+        if server_errors:
+            show_error(
+                "LikeBox 启动失败。\n\n"
+                f"日志位置：{data_dir / 'likebox.log'}\n"
+                "请确认 8180 端口没有被其他程序占用。"
+            )
+            return 1
+
+        if not port_is_open(app.PORT):
+            show_error(
+                "LikeBox 服务未能启动。\n\n"
+                f"日志位置：{data_dir / 'likebox.log'}\n"
+                "请确认 8180 端口没有被其他程序占用。"
+            )
+            return 1
+
+        logging.info("LikeBox 启动：http://127.0.0.1:%s/", app.PORT)
         if os.environ.get("LIKEBOX_NO_BROWSER") != "1":
             threading.Timer(
                 1.2, lambda: webbrowser.open(f"http://127.0.0.1:{app.PORT}/")
             ).start()
-        logging.info("LikeBox 启动：http://127.0.0.1:%s/", app.PORT)
-        serve(
-            app.app,
-            host="0.0.0.0",
-            port=app.PORT,
-            threads=8,
-            ident="LikeBox",
-        )
-        return 0
+
+        if os.environ.get("LIKEBOX_NO_TRAY") == "1":
+            server_thread.join()
+            return 0
+
+        from tray_icon import TrayIcon
+
+        try:
+            tray = TrayIcon(app.PORT)
+            result = tray.run()
+        except Exception:
+            logging.exception("托盘启动失败")
+            show_error(
+                "LikeBox 托盘启动失败。\n\n"
+                f"日志位置：{data_dir / 'likebox.log'}\n"
+                "请确认 Windows 资源管理器正常后重新启动程序。"
+            )
+            logging.shutdown()
+            os._exit(1)
+
+        logging.shutdown()
+        os._exit(result)
     except Exception:
         logging.exception("LikeBox 启动失败")
         show_error(

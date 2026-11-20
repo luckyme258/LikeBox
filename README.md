@@ -17,6 +17,7 @@ A local bookmark manager built with Flask + SQLite. It imports browser bookmark 
 - 标签、备注、打开统计、链接检测。
 - 电脑与手机 Termux 双向同步主收藏夹。
 - 深色界面，数据只保存在本地 SQLite。
+- Windows 桌面版带系统托盘图标：打开页面、开机自启、退出程序。
 
 ### 快速开始
 
@@ -61,6 +62,10 @@ python sync_engine.py --role client --peer http://<电脑局域网地址>:8180 -
 - 同步令牌保存在本地数据库，不写入代码。
 - 局域网密码只用于基础防护，不建议直接暴露到公网。
 
+### 已知限制
+
+- 移动端布局尚未适配，当前界面主要面向桌面浏览器；下一步将补移动端适配。
+
 ### GitHub 代码同步
 
 电脑端发布：
@@ -90,6 +95,7 @@ bash scripts/update-termux.sh
 - Tags, notes, open statistics, and link checks.
 - Two-way sync between the desktop app and Termux on Android.
 - Dark UI; all data stays in a local SQLite database.
+- Windows desktop build includes a system tray icon for opening the page, enabling startup, and quitting.
 
 ### Quick start
 
@@ -133,6 +139,10 @@ Only the primary library's folders, bookmarks, and excluded domains are synced. 
 - `data/`, `*.db`, logs, and personal bookmark exports are excluded from Git.
 - The sync token is stored in the local database, not in source code.
 - The LAN password is basic protection only. Do not expose the app directly to the public internet.
+
+### Known limitations
+
+- The mobile layout is not adapted yet. The current UI targets desktop browsers; mobile support is the next step.
 
 ### GitHub code sync
 
